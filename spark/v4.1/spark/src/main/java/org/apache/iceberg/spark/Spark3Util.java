@@ -238,16 +238,44 @@ public class Spark3Util {
         add.isNullable(),
         "Incompatible change: cannot add required column: %s",
         leafName(add.fieldNames()));
-    if (add.defaultValue() != null) {
+    //    if (add.defaultValue() != null) {
+    //      throw new UnsupportedOperationException(
+    //          String.format(
+    //              "Cannot add column %s since setting default values in Spark is currently
+    // unsupported",
+    //              leafName(add.fieldNames())));
+    //    }
+
+    Type type = SparkSchemaUtil.convert(add.dataType());
+    // CHANGED: Handle default values for STRING type only
+    if (add.defaultValue() != null && type.typeId() == Type.TypeID.STRING) {
+      Literal<?> sparkLiteral = add.defaultValue().getValue();
+
+      if (sparkLiteral != null && sparkLiteral.value() != null) {
+        String defaultStr = sparkLiteral.value().toString();
+
+        pendingUpdate.addColumn(
+            parentName(add.fieldNames()),
+            leafName(add.fieldNames()),
+            type,
+            add.comment(),
+            org.apache.iceberg.expressions.Literal.of(defaultStr));
+      } else {
+        // Null literal - shouldn't happen but handle it
+        throw new IllegalArgumentException(
+            "Default value for column " + leafName(add.fieldNames()) + " is null");
+      }
+    } else if (add.defaultValue() != null) {
+      // Non-STRING types still throw error
       throw new UnsupportedOperationException(
           String.format(
               "Cannot add column %s since setting default values in Spark is currently unsupported",
               leafName(add.fieldNames())));
-    }
+    } else {
 
-    Type type = SparkSchemaUtil.convert(add.dataType());
-    pendingUpdate.addColumn(
-        parentName(add.fieldNames()), leafName(add.fieldNames()), type, add.comment());
+      pendingUpdate.addColumn(
+          parentName(add.fieldNames()), leafName(add.fieldNames()), type, add.comment());
+    }
 
     if (add.position() instanceof TableChange.After) {
       TableChange.After after = (TableChange.After) add.position();

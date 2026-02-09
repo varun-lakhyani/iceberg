@@ -174,11 +174,20 @@ public class TestSparkDefaultValues extends CatalogTestBase {
 
     validationCatalog.createTable(
         tableIdent, schema, PartitionSpec.unpartitioned(), ImmutableMap.of("format-version", "3"));
+    sql("INSERT INTO %s VALUES (1)", commitTarget());
+    sql("ALTER TABLE %s ADD COLUMN data STRING DEFAULT 'default-value'", tableName);
+    sql("REFRESH TABLE %s", commitTarget());
+    sql("INSERT INTO %s VALUES (2, DEFAULT), (3, 'Okaydone')", commitTarget());
 
-    assertThatThrownBy(
-            () -> sql("ALTER TABLE %s ADD COLUMN data STRING DEFAULT 'default-value'", tableName))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("default values in Spark is currently unsupported");
+    assertEquals(
+        "Should have correct default values for existing and new rows",
+        ImmutableList.of(row(1, "default-value"), row(2, "default-value"), row(3, "Okaydone")),
+        sql("SELECT * FROM %s ORDER BY id", selectTarget()));
+    //    assertThatThrownBy(
+    //            () -> sql("ALTER TABLE %s ADD COLUMN data STRING DEFAULT 'default-value'",
+    // tableName))
+    //        .isInstanceOf(UnsupportedOperationException.class)
+    //        .hasMessageContaining("default values in Spark is currently unsupported");
   }
 
   @TestTemplate
