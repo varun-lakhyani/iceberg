@@ -52,28 +52,37 @@ public class TestSparkDefaultValues extends CatalogTestBase {
         .as("Table should not already exist")
         .isFalse();
 
-    Schema schema =
-        new Schema(
-            Types.NestedField.required(1, "id", Types.IntegerType.get()),
-            Types.NestedField.optional("bool_col")
-                .withId(2)
-                .ofType(Types.BooleanType.get())
-                .withWriteDefault(Literal.of(true))
-                .build(),
-            Types.NestedField.optional("int_col")
-                .withId(3)
-                .ofType(Types.IntegerType.get())
-                .withWriteDefault(Literal.of(42))
-                .build(),
-            Types.NestedField.optional("long_col")
-                .withId(4)
-                .ofType(Types.LongType.get())
-                .withWriteDefault(Literal.of(100L))
-                .build());
-
-    validationCatalog.createTable(
-        tableIdent, schema, PartitionSpec.unpartitioned(), ImmutableMap.of("format-version", "3"));
-
+    //    Schema schema =
+    //        new Schema(
+    //            Types.NestedField.required(1, "id", Types.IntegerType.get()),
+    //            Types.NestedField.optional("bool_col")
+    //                .withId(2)
+    //                .ofType(Types.BooleanType.get())
+    //                .withWriteDefault(Literal.of(true))
+    //                .build(),
+    //            Types.NestedField.optional("int_col")
+    //                .withId(3)
+    //                .ofType(Types.IntegerType.get())
+    //                .withWriteDefault(Literal.of(42))
+    //                .build(),
+    //            Types.NestedField.optional("long_col")
+    //                .withId(4)
+    //                .ofType(Types.LongType.get())
+    //                .withWriteDefault(Literal.of(100L))
+    //                .build());
+    //
+    //    validationCatalog.createTable(
+    //        tableIdent, schema, PartitionSpec.unpartitioned(), ImmutableMap.of("format-version",
+    // "3"));
+    sql(
+        "CREATE TABLE %s ("
+            + "id INT, "
+            + "bool_col BOOLEAN DEFAULT true, "
+            + "int_col INT DEFAULT 42, "
+            + "long_col BIGINT DEFAULT 100"
+            + ") USING iceberg "
+            + "TBLPROPERTIES ('format-version'='3')",
+        tableName);
     sql("INSERT INTO %s VALUES (1, DEFAULT, DEFAULT, DEFAULT)", commitTarget());
 
     assertEquals(
