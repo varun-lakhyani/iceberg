@@ -110,7 +110,7 @@ jobs:
       - run: echo -e "$(ip addr show eth0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)\t$(hostname -f) $(hostname -s)" | sudo tee -a /etc/hosts
       - run: |
           ./gradlew -DsparkVersions=${{ matrix.spark }} -DscalaVersion=${{ matrix.scala }} -DflinkVersions= -DkafkaVersions= \
-            :iceberg-spark:iceberg-spark-extensions-4.1_2.13:test \
+            :iceberg-spark:iceberg-spark-4.1_2.13:test \
             --tests "org.apache.iceberg.spark.sql.TestSparkDefaultValues" \
             -Pquick=true
       - uses: actions/upload-artifact@v6
