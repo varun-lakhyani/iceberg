@@ -174,6 +174,8 @@ public class TestRewriteDataFilesProcedure extends ExtensionsTestBase {
     createTable();
     // create 10 files under non-partitioned table
     insertData(1000);
+    List<Object[]> files = sql("SELECT COUNT(*) FROM %s.files", tableName);
+    System.out.println("fffffffffffffffffFiles created: " + files.get(0)[0]);
     List<Object[]> expectedRecords = currentData();
 
     List<Object[]> output =
