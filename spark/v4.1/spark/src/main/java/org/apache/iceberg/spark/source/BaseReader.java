@@ -32,6 +32,7 @@ import org.apache.hadoop.shaded.org.apache.curator.shaded.com.google.common.base
 import org.apache.iceberg.ContentFile;
 import org.apache.iceberg.ContentScanTask;
 import org.apache.iceberg.DeleteFile;
+import org.apache.iceberg.FileScanTask;
 import org.apache.iceberg.MetadataColumns;
 import org.apache.iceberg.Partitioning;
 import org.apache.iceberg.ScanTask;
@@ -130,9 +131,30 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
   }
 
   public boolean next() throws IOException {
-    Preconditions.checkArgument(
-        false,
-        taskGroup.tasks().size() + "    abhiiiiiiiiiiiiiiii dekhteeeee hai " + taskGroup.tasks());
+    List<FileScanTask> allTasks = taskGroup.tasks();
+    StringBuilder details = new StringBuilder();
+    details.append("Total tasks: ").append(allTasks.size()).append("\n");
+
+    for (int i = 0; i < allTasks.size(); i++) {
+      FileScanTask task = allTasks.get(i);
+      details
+          .append("Task ")
+          .append(i + 1)
+          .append(": ")
+          .append(task.getClass().getSimpleName())
+          .append(" -> ")
+          .append(task.file().location())
+          .append(" ")
+          .append("(")
+          .append(task.start())
+          .append("-")
+          .append(task.start() + task.length())
+          .append(") ")
+          .append(task.length())
+          .append(" bytes\n");
+    }
+
+    Preconditions.checkArgument(false, details.toString());
     try {
       while (true) {
         if (currentIterator.hasNext()) {
