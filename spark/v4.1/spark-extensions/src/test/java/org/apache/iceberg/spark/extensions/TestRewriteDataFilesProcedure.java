@@ -173,7 +173,7 @@ public class TestRewriteDataFilesProcedure extends ExtensionsTestBase {
   public void testRewriteDataFilesOnNonPartitionTable() {
     createTable();
     // create 10 files under non-partitioned table
-    insertData(10);
+    insertData(1000);
     List<Object[]> expectedRecords = currentData();
 
     List<Object[]> output =
