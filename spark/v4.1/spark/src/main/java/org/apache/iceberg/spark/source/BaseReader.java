@@ -28,6 +28,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.hadoop.shaded.org.apache.curator.shaded.com.google.common.base.Preconditions;
 import org.apache.iceberg.ContentFile;
 import org.apache.iceberg.ContentScanTask;
 import org.apache.iceberg.DeleteFile;
@@ -129,6 +130,9 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
   }
 
   public boolean next() throws IOException {
+    Preconditions.checkArgument(
+        false,
+        taskGroup.tasks().size() + "    abhiiiiiiiiiiiiiiii dekhteeeee hai " + taskGroup.tasks());
     try {
       while (true) {
         if (currentIterator.hasNext()) {
