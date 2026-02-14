@@ -131,7 +131,7 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
   }
 
   public boolean next() throws IOException {
-    List<FileScanTask> allTasks = taskGroup.tasks();
+    List<FileScanTask> allTasks = (List<FileScanTask>) taskGroup.tasks();
     StringBuilder details = new StringBuilder();
     details.append("Total tasks: ").append(allTasks.size()).append("\n");
 
