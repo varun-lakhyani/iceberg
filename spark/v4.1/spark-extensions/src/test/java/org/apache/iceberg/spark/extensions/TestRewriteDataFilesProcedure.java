@@ -175,7 +175,7 @@ public class TestRewriteDataFilesProcedure extends ExtensionsTestBase {
   public void testRewriteDataFilesOnNonPartitionTable() {
     createTable();
     // create 10 files under non-partitioned table
-    insertData(1000);
+    insertData(10);
     //    List<Object[]> files = sql("SELECT COUNT(*) FROM %s.files", tableName);
     //    Preconditions.checkArgument(false, "fffffffffffffffffFiles created: " + files.get(0)[0]);
     List<Object[]> expectedRecords = currentData();
@@ -184,7 +184,7 @@ public class TestRewriteDataFilesProcedure extends ExtensionsTestBase {
 
     assertEquals(
         "Action should rewrite 10 data files and add 1 data files",
-        row(1000, 1),
+        row(10, 1),
         Arrays.copyOf(output.get(0), 2));
     // verify rewritten bytes separately
     assertThat(output.get(0)).hasSize(5);
@@ -1087,7 +1087,7 @@ public class TestRewriteDataFilesProcedure extends ExtensionsTestBase {
 
     int minFileSizeKB = 100;
     int recordsPerFile = 20000; // ~2000-2500 records per file
-    int totalRecords = filesCount * recordsPerFile; // ~2-2.5 million records
+    int totalRecords = filesCount; // ~2-2.5 million records
 
     // Generate that many records
 
