@@ -64,8 +64,13 @@ class AsyncTaskOpener<T, TaskT extends ScanTask> implements Closeable {
 
   private void startOpening(List<TaskT> tasks, Function<TaskT, CloseableIterator<T>> openFunction) {
     started = true;
-    //    Preconditions.checkArgument(false, "pehleee    yaha tak to pohoch chuka hu          " +
-    // queue);
+    Preconditions.checkArgument(
+        false,
+        "pehleee    yaha tak to pohoch chuka hu          "
+            + tasks
+            + "  executorsssssss "
+            + executor);
+
     executor.submit(
         () -> {
           try {
