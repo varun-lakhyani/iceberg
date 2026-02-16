@@ -64,6 +64,7 @@ class AsyncTaskOpener<T, TaskT extends ScanTask> implements Closeable {
 
   private void startOpening(List<TaskT> tasks, Function<TaskT, CloseableIterator<T>> openFunction) {
     started = true;
+
     executor.submit(
         () -> {
           try {
