@@ -18,18 +18,19 @@
  */
 package org.apache.iceberg.spark.extensions;
 
+import static org.apache.spark.sql.functions.col;
+import static org.apache.spark.sql.functions.concat;
+import static org.apache.spark.sql.functions.lit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.IntStream;
 import org.apache.iceberg.ParameterizedTestExtension;
 import org.apache.iceberg.SnapshotSummary;
 import org.apache.iceberg.TableProperties;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
-import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.spark.source.ThreeColumnRecord;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -1091,18 +1092,25 @@ public class TestRewriteDataFilesProcedure extends ExtensionsTestBase {
 
     // Generate that many records
 
-    List<ThreeColumnRecord> records = Lists.newArrayList();
-    IntStream.range(0, totalRecords / 2)
-        .forEach(
-            i -> {
-              records.add(record1);
-              records.add(record2);
-              //              records.add(new ThreeColumnRecord(i + 1, "bar_" + i, "data_" + (i +
-              // 1)));
-            });
+    //    List<ThreeColumnRecord> records = Lists.newArrayList();
+    //    IntStream.range(0, totalRecords / 2)
+    //        .forEach(
+    //            i -> {
+    //              records.add(record1);
+    //              records.add(record2);
+    //              //              records.add(new ThreeColumnRecord(i + 1, "bar_" + i, "data_" +
+    // (i +
+    //              // 1)));
+    //            });
 
     Dataset<Row> df =
-        spark.createDataFrame(records, ThreeColumnRecord.class).repartition(filesCount);
+        spark
+            .range(0, totalRecords)
+            .withColumn("c1", col("id").cast("int"))
+            .withColumn("c2", concat(lit("foo_"), col("id")))
+            .withColumn("c3", lit(null).cast("string"))
+            .drop("id")
+            .repartition(filesCount);
     try {
       df.writeTo(table).append();
     } catch (org.apache.spark.sql.catalyst.analysis.NoSuchTableException e) {
