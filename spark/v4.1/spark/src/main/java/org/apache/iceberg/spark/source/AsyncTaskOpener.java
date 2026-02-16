@@ -72,23 +72,33 @@ class AsyncTaskOpener<T, TaskT extends ScanTask> implements Closeable {
                     .suppressFailureWhenFinished()
                     .onFailure(
                         (task, exception) -> {
-                          Preconditions.checkArgument(false, "Ye idhar on failue mai gaya hai");
+                          Preconditions.checkArgument(
+                              false, "Ye idhar on failue mai gaya hai" + exception);
                         })
                     .run(
                         task -> {
                           CloseableIterator<T> iterator = openFunction.apply(task);
-                          queue.put(iterator);
+                          try {
+                            queue.put(iterator);
+                          } catch (InterruptedException e) {
+                            Preconditions.checkArgument(
+                                false,
+                                "Put mai kuch bt hui hai Ye idhar on failue mai gaya hai" + e);
+                            Thread.currentThread().interrupt();
+                            throw new RuntimeException("Interrupted while adding to queue", e);
+                          }
                         });
                 queue.put(DONE_MARKER);
 
               } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                Preconditions.checkArgument(false, "ye idhar first catch mai pakda gaya hai ");
+                Preconditions.checkArgument(false, "ye idhar first catch mai pakda gaya hai " + e);
                 LOG.error("Interrupted while coordinating async opening", e);
                 try {
                   queue.put(DONE_MARKER);
                 } catch (InterruptedException ie) {
-                  Preconditions.checkArgument(false, "ye idhar second catch mai pakda gaya hai ");
+                  Preconditions.checkArgument(
+                      false, "ye idhar second catch mai pakda gaya hai " + e);
                   queue.offer(DONE_MARKER);
                 }
               } finally {
