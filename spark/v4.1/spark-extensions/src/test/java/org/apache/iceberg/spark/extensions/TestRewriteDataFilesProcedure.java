@@ -1095,8 +1095,8 @@ public class TestRewriteDataFilesProcedure extends ExtensionsTestBase {
     IntStream.range(0, totalRecords / 2)
         .forEach(
             i -> {
-              records.add(record1);
-              records.add(record2);
+              records.add(new ThreeColumnRecord(i, "foo_" + i, "data_" + i));
+              records.add(new ThreeColumnRecord(i + 1, "bar_" + i, "data_" + (i + 1)));
             });
 
     Dataset<Row> df =
