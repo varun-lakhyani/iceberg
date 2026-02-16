@@ -69,6 +69,12 @@ class AsyncTaskOpener<T, TaskT extends ScanTask> implements Closeable {
     executor.submit(
         () -> {
           try {
+            Preconditions.checkArgument(
+                false,
+                "just first executpr ke andar for ke andar  open ho chuka haii yaha tak to pohoch chuka hu          "
+                    + queue
+                    + "    dekhle "
+                    + tasks);
             for (TaskT task : tasks) {
               Preconditions.checkArgument(
                   false,
