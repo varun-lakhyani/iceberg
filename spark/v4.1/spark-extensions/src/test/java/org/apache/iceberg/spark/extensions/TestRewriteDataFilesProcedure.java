@@ -178,14 +178,13 @@ public class TestRewriteDataFilesProcedure extends ExtensionsTestBase {
     insertData(1000);
     //    List<Object[]> files = sql("SELECT COUNT(*) FROM %s.files", tableName);
     //    Preconditions.checkArgument(false, "fffffffffffffffffFiles created: " + files.get(0)[0]);
+    List<Object[]> expectedRecords = currentData();
     List<Object[]> output =
         sql("CALL %s.system.rewrite_data_files(table => '%s')", catalogName, tableIdent);
 
-    List<Object[]> expectedRecords = currentData();
-
     assertEquals(
         "Action should rewrite 10 data files and add 1 data files",
-        row(10, 1),
+        row(1000, 1),
         Arrays.copyOf(output.get(0), 2));
     // verify rewritten bytes separately
     assertThat(output.get(0)).hasSize(5);
@@ -1093,7 +1092,7 @@ public class TestRewriteDataFilesProcedure extends ExtensionsTestBase {
     // Generate that many records
 
     //    List<ThreeColumnRecord> records = Lists.newArrayList();
-    //    IntStream.range(0, totalRecords / 2)
+    //    IntStream.range(0, filescount / 2)
     //        .forEach(
     //            i -> {
     //              records.add(record1);

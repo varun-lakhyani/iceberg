@@ -20,6 +20,7 @@ package org.apache.iceberg.spark.source;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -28,11 +29,9 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.hadoop.shaded.org.apache.curator.shaded.com.google.common.base.Preconditions;
 import org.apache.iceberg.ContentFile;
 import org.apache.iceberg.ContentScanTask;
 import org.apache.iceberg.DeleteFile;
-import org.apache.iceberg.FileScanTask;
 import org.apache.iceberg.MetadataColumns;
 import org.apache.iceberg.Partitioning;
 import org.apache.iceberg.ScanTask;
@@ -77,11 +76,13 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
   private final Iterator<TaskT> tasks;
   private final DeleteCounter counter;
   private final boolean cacheDeleteFilesOnExecutors;
+  private final boolean asyncEnabled;
 
   private Map<String, InputFile> lazyInputFiles;
   private CloseableIterator<T> currentIterator;
   private T current = null;
   private TaskT currentTask = null;
+  private AsyncTaskOpener<T, TaskT> asyncOpener;
 
   BaseReader(
       Table table,
@@ -91,7 +92,7 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
       boolean cacheDeleteFilesOnExecutors) {
     this.table = table;
     this.taskGroup = taskGroup;
-    this.tasks = taskGroup.tasks().iterator();
+    //    this.tasks = taskGroup.tasks().iterator();
     this.currentIterator = CloseableIterator.empty();
     this.expectedSchema = expectedSchema;
     this.caseSensitive = caseSensitive;
@@ -100,6 +101,17 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
         nameMappingString != null ? NameMappingParser.fromJson(nameMappingString) : null;
     this.counter = new DeleteCounter();
     this.cacheDeleteFilesOnExecutors = cacheDeleteFilesOnExecutors;
+    this.asyncEnabled = true;
+
+    if (asyncEnabled) {
+      List<TaskT> allTasks = new ArrayList<>();
+      taskGroup.tasks().forEach(task -> allTasks.add((TaskT) task));
+      this.asyncOpener = new AsyncTaskOpener<>(allTasks, this::open, 4, 10);
+      this.tasks = null;
+    } else {
+      this.tasks = taskGroup.tasks().iterator();
+      this.asyncOpener = null;
+    }
   }
 
   protected abstract CloseableIterator<T> open(TaskT task);
@@ -131,29 +143,62 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
   }
 
   public boolean next() throws IOException {
-    List<FileScanTask> allTasks = (List<FileScanTask>) taskGroup.tasks();
-    StringBuilder details = new StringBuilder();
-    details.append("Total tasks: ").append(allTasks.size()).append("\n");
-
-    for (int i = 0; i < allTasks.size(); i++) {
-      FileScanTask task = allTasks.get(i);
-      details
-          .append("Task ")
-          .append(i + 1)
-          .append(": ")
-          .append(task.getClass().getSimpleName())
-          .append(" -> ")
-          .append(task.file().location())
-          .append(" ")
-          .append("(")
-          .append(task.start())
-          .append("-")
-          .append(task.start() + task.length())
-          .append(") ")
-          .append(task.length())
-          .append(" bytes\n");
+    //    List<FileScanTask> allTasks = (List<FileScanTask>) taskGroup.tasks();
+    //    StringBuilder details = new StringBuilder();
+    //    details.append("Total tasks: ").append(allTasks.size()).append("\n");
+    //
+    //    for (int i = 0; i < allTasks.size(); i++) {
+    //      FileScanTask task = allTasks.get(i);
+    //      details
+    //          .append("Task ")
+    //          .append(i + 1)
+    //          .append(": ")
+    //          .append(task.getClass().getSimpleName())
+    //          .append(" -> ")
+    //          .append(task.file().location())
+    //          .append(" ")
+    //          .append("(")
+    //          .append(task.start())
+    //          .append("-")
+    //          .append(task.start() + task.length())
+    //          .append(") ")
+    //          .append(task.length())
+    //          .append(" bytes\n");
+    //    }
+    //    Preconditions.checkArgument(false, details.toString());
+    try {
+      while (true) {
+        if (currentIterator.hasNext()) {
+          this.current = currentIterator.next();
+          return true;
+        } else {
+          this.currentIterator.close();
+          try {
+            CloseableIterator<T> nextIterator = asyncOpener.getNext();
+            if (nextIterator == null) {
+              return false;
+            }
+            this.currentIterator = nextIterator;
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOG.error("Interrupted", e);
+          }
+        }
+      }
+    } catch (IOException | RuntimeException e) {
+      if (currentTask != null && !currentTask.isDataTask()) {
+        String filePaths =
+            referencedFiles(currentTask)
+                .map(ContentFile::location)
+                .collect(Collectors.joining(", "));
+        LOG.error("Error reading file(s): {}", filePaths, e);
+      }
+      throw e;
     }
-    Preconditions.checkArgument(false, details.toString());
+  }
+
+  public boolean nextSync() throws IOException {
+
     try {
       while (true) {
         if (currentIterator.hasNext()) {
