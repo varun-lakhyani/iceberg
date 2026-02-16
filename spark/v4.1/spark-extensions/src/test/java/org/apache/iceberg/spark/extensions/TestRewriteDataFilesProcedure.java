@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
+import org.apache.hadoop.shaded.org.apache.curator.shaded.com.google.common.base.Preconditions;
 import org.apache.iceberg.ParameterizedTestExtension;
 import org.apache.iceberg.SnapshotSummary;
 import org.apache.iceberg.TableProperties;
@@ -99,29 +100,30 @@ public class TestRewriteDataFilesProcedure extends ExtensionsTestBase {
   //    assertEquals("Procedure output must match", ImmutableList.of(row(0, 0, 0L, 0, 0)), output);
   //  }
 
-  //  @TestTemplate
-  //  public void testRewriteDataFilesOnPartitionTable() {
-  //    createPartitionTable();
-  //    // create 5 files for each partition (c2 = 'foo' and c2 = 'bar')
-  //    insertData(10);
-  //    List<Object[]> expectedRecords = currentData();
+  //    @TestTemplate
+  //    public void testRewriteDataFilesOnPartitionTable() {
+  //      createPartitionTable();
+  //      // create 5 files for each partition (c2 = 'foo' and c2 = 'bar')
+  //      insertData(10);
+  //      List<Object[]> expectedRecords = currentData();
   //
-  //    List<Object[]> output =
-  //        sql("CALL %s.system.rewrite_data_files(table => '%s')", catalogName, tableIdent);
+  //      List<Object[]> output =
+  //          sql("CALL %s.system.rewrite_data_files(table => '%s')", catalogName, tableIdent);
   //
-  //    assertEquals(
-  //        "Action should rewrite 10 data files and add 2 data files (one per partition) ",
-  //        row(10, 2),
-  //        Arrays.copyOf(output.get(0), 2));
-  //    // verify rewritten bytes separately
-  //    assertThat(output.get(0)).hasSize(5);
-  //    assertThat(output.get(0)[2])
-  //        .isInstanceOf(Long.class)
-  //        .isEqualTo(Long.valueOf(snapshotSummary().get(SnapshotSummary.REMOVED_FILE_SIZE_PROP)));
+  //      assertEquals(
+  //          "Action should rewrite 10 data files and add 2 data files (one per partition) ",
+  //          row(10, 2),
+  //          Arrays.copyOf(output.get(0), 2));
+  //      // verify rewritten bytes separately
+  //      assertThat(output.get(0)).hasSize(5);
+  //      assertThat(output.get(0)[2])
+  //          .isInstanceOf(Long.class)
   //
-  //    List<Object[]> actualRecords = currentData();
-  //    assertEquals("Data after compaction should not change", expectedRecords, actualRecords);
-  //  }
+  // .isEqualTo(Long.valueOf(snapshotSummary().get(SnapshotSummary.REMOVED_FILE_SIZE_PROP)));
+  //
+  //      List<Object[]> actualRecords = currentData();
+  //      assertEquals("Data after compaction should not change", expectedRecords, actualRecords);
+  //    }
 
   //  @TestTemplate
   //  public void testPartitionStatsIncrementalCompute() throws IOException {
@@ -174,8 +176,8 @@ public class TestRewriteDataFilesProcedure extends ExtensionsTestBase {
     createTable();
     // create 10 files under non-partitioned table
     insertData(1000);
-    //    List<Object[]> files = sql("SELECT COUNT(*) FROM %s.files", tableName);
-    //    Preconditions.checkArgument(false, "fffffffffffffffffFiles created: " + files.get(0)[0]);
+    List<Object[]> files = sql("SELECT COUNT(*) FROM %s.files", tableName);
+    Preconditions.checkArgument(false, "fffffffffffffffffFiles created: " + files.get(0)[0]);
     List<Object[]> output =
         sql("CALL %s.system.rewrite_data_files(table => '%s')", catalogName, tableIdent);
 
@@ -1084,8 +1086,14 @@ public class TestRewriteDataFilesProcedure extends ExtensionsTestBase {
     ThreeColumnRecord record1 = new ThreeColumnRecord(1, "foo", null);
     ThreeColumnRecord record2 = new ThreeColumnRecord(2, "bar", null);
 
+    int minFileSizeKB = 100;
+    int recordsPerFile = minFileSizeKB * 1024 / 50; // ~2000-2500 records per file
+    int totalRecords = filesCount * recordsPerFile; // ~2-2.5 million records
+
+    // Generate that many records
+
     List<ThreeColumnRecord> records = Lists.newArrayList();
-    IntStream.range(0, filesCount / 2)
+    IntStream.range(0, totalRecords / 2)
         .forEach(
             i -> {
               records.add(record1);
