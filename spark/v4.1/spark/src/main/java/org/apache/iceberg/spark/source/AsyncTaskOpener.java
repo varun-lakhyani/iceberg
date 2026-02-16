@@ -25,11 +25,11 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import org.apache.hadoop.shaded.org.apache.curator.shaded.com.google.common.base.Preconditions;
 import org.apache.iceberg.ScanTask;
 import org.apache.iceberg.io.CloseableIterator;
+import org.apache.iceberg.util.Tasks;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,59 +63,100 @@ class AsyncTaskOpener<T, TaskT extends ScanTask> implements Closeable {
   }
 
   private void startOpening(List<TaskT> tasks, Function<TaskT, CloseableIterator<T>> openFunction) {
-    started = true;
-    Preconditions.checkArgument(
-        false,
-        "pehleee    yaha tak to pohoch chuka hu          "
-            + tasks
-            + "  executorsssssss "
-            + executor);
+    Thread coordinatorThread =
+        new Thread(
+            () -> {
+              try {
+                Tasks.foreach(tasks)
+                    .executeWith(executor)
+                    .suppressFailureWhenFinished()
+                    .onFailure(
+                        (task, exception) -> {
+                          Preconditions.checkArgument(false, "Ye idhar on failue mai gaya hai");
+                        })
+                    .run(
+                        task -> {
+                          CloseableIterator<T> iterator = openFunction.apply(task);
+                          queue.put(iterator);
+                        });
+                queue.put(DONE_MARKER);
 
-    executor.submit(
-        () -> {
-          try {
-            Preconditions.checkArgument(
-                false,
-                "just first executpr ke andar for ke andar  open ho chuka haii yaha tak to pohoch chuka hu          "
-                    + queue
-                    + "    dekhle "
-                    + tasks);
-            for (TaskT task : tasks) {
-              Preconditions.checkArgument(
-                  false,
-                  "just for ke andar  open ho chuka haii yaha tak to pohoch chuka hu          "
-                      + queue
-                      + "    dekhle "
-                      + tasks);
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                Preconditions.checkArgument(false, "ye idhar first catch mai pakda gaya hai ");
+                LOG.error("Interrupted while coordinating async opening", e);
+                try {
+                  queue.put(DONE_MARKER);
+                } catch (InterruptedException ie) {
+                  Preconditions.checkArgument(false, "ye idhar second catch mai pakda gaya hai ");
+                  queue.offer(DONE_MARKER);
+                }
+              } finally {
+                executor.shutdown();
+              }
+            },
+            "iceberg-async-coordinator");
 
-              executor.submit(
-                  () -> {
-                    try {
-                      CloseableIterator<T> iterator = openFunction.apply(task);
-                      Preconditions.checkArgument(
-                          false,
-                          "pehla open ho chuka haii yaha tak to pohoch chuka hu          " + queue);
-                      queue.put(iterator);
-                    } catch (Exception e) {
-                      LOG.error("Failed to open task asynchronously", e);
-                      Preconditions.checkArgument(false, "fail pointer 3 " + e);
-                    }
-                  });
-            }
-            executor.shutdown();
-            if (executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS)) {
-              queue.put(DONE_MARKER);
-            }
-
-            LOG.info("All {} tasks opened asynchronously", tasks.size());
-
-          } catch (InterruptedException e) {
-            Preconditions.checkArgument(false, "fail pointer 5 " + e);
-            Thread.currentThread().interrupt();
-            LOG.error("Interrupted while coordinating async opening", e);
-          }
-        });
+    coordinatorThread.setDaemon(true);
+    coordinatorThread.start();
   }
+
+  //
+  //      started = true;
+  //    Preconditions.checkArgument(
+  //        false,
+  //        "pehleee    yaha tak to pohoch chuka hu          "
+  //            + tasks
+  //            + "  executorsssssss "
+  //            + executor);
+  //
+  //    executor.submit(
+  //        () -> {
+  //          try {
+  //            Preconditions.checkArgument(
+  //                false,
+  //                "just first executpr ke andar for ke andar  open ho chuka haii yaha tak to
+  // pohoch chuka hu          "
+  //                    + queue
+  //                    + "    dekhle "
+  //                    + tasks);
+  //            for (TaskT task : tasks) {
+  //              Preconditions.checkArgument(
+  //                  false,
+  //                  "just for ke andar  open ho chuka haii yaha tak to pohoch chuka hu          "
+  //                      + queue
+  //                      + "    dekhle "
+  //                      + tasks);
+  //
+  //              executor.submit(
+  //                  () -> {
+  //                    try {
+  //                      CloseableIterator<T> iterator = openFunction.apply(task);
+  //                      Preconditions.checkArgument(
+  //                          false,
+  //                          "pehla open ho chuka haii yaha tak to pohoch chuka hu          " +
+  // queue);
+  //                      queue.put(iterator);
+  //                    } catch (Exception e) {
+  //                      LOG.error("Failed to open task asynchronously", e);
+  //                      Preconditions.checkArgument(false, "fail pointer 3 " + e);
+  //                    }
+  //                  });
+  //            }
+  //            executor.shutdown();
+  //            if (executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS)) {
+  //              queue.put(DONE_MARKER);
+  //            }
+  //
+  //            LOG.info("All {} tasks opened asynchronously", tasks.size());
+  //
+  //          } catch (InterruptedException e) {
+  //            Preconditions.checkArgument(false, "fail pointer 5 " + e);
+  //            Thread.currentThread().interrupt();
+  //            LOG.error("Interrupted while coordinating async opening", e);
+  //          }
+  //        });
+  //  }
 
   CloseableIterator<T> getNext() throws InterruptedException {
     CloseableIterator<T> next = queue.take();

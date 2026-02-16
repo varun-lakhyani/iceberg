@@ -63,7 +63,7 @@ public class Tasks {
   }
 
   public interface Task<I, E extends Exception> {
-    void run(I item) throws E;
+    void run(I item) throws E, InterruptedException;
   }
 
   public static class Builder<I> {
