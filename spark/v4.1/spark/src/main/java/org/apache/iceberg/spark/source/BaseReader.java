@@ -29,7 +29,6 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.hadoop.shaded.org.apache.curator.shaded.com.google.common.base.Preconditions;
 import org.apache.iceberg.ContentFile;
 import org.apache.iceberg.ContentScanTask;
 import org.apache.iceberg.DeleteFile;
@@ -144,68 +143,22 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
   }
 
   public boolean next() throws IOException {
-    //    List<FileScanTask> allTasks = (List<FileScanTask>) taskGroup.tasks();
-    //    StringBuilder details = new StringBuilder();
-    //    details.append("Total tasks: ").append(allTasks.size()).append("\n");
-    //
-    //    for (int i = 0; i < allTasks.size(); i++) {
-    //      FileScanTask task = allTasks.get(i);
-    //      details
-    //          .append("Task ")
-    //          .append(i + 1)
-    //          .append(": ")
-    //          .append(task.getClass().getSimpleName())
-    //          .append(" -> ")
-    //          .append(task.file().location())
-    //          .append(" ")
-    //          .append("(")
-    //          .append(task.start())
-    //          .append("-")
-    //          .append(task.start() + task.length())
-    //          .append(") ")
-    //          .append(task.length())
-    //          .append(" bytes\n");
-    //    }
-    //    Preconditions.checkArgument(false, details.toString());
     try {
       while (true) {
         if (currentIterator.hasNext()) {
           this.current = currentIterator.next();
           return true;
-        } else {
+        } else if (asyncEnabled) {
           this.currentIterator.close();
           try {
-            CloseableIterator<T> nextIterator = asyncOpener.getNext();
-            if (nextIterator == null) {
+            this.currentIterator = asyncOpener.getNext();
+            if (this.currentIterator == null) {
               return false;
             }
-            this.currentIterator = nextIterator;
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            LOG.error("Interrupted", e);
-            Preconditions.checkArgument(false, "fail pointer 1 " + e);
+            throw new RuntimeException("Interrupted while getting next task iterator" + e);
           }
-        }
-      }
-    } catch (IOException | RuntimeException e) {
-      if (currentTask != null && !currentTask.isDataTask()) {
-        String filePaths =
-            referencedFiles(currentTask)
-                .map(ContentFile::location)
-                .collect(Collectors.joining(", "));
-        LOG.error("Error reading file(s): {}", filePaths, e);
-      }
-      throw e;
-    }
-  }
-
-  public boolean nextSync() throws IOException {
-
-    try {
-      while (true) {
-        if (currentIterator.hasNext()) {
-          this.current = currentIterator.next();
-          return true;
         } else if (tasks.hasNext()) {
           this.currentIterator.close();
           this.currentTask = tasks.next();

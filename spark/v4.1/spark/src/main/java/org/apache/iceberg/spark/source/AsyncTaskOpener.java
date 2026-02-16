@@ -41,8 +41,6 @@ class AsyncTaskOpener<T, TaskT extends ScanTask> implements Closeable {
   private final ExecutorService executor;
   private final CloseableIterator<T> DONE_MARKER = CloseableIterator.empty();
 
-  private volatile boolean started = false;
-
   AsyncTaskOpener(
       List<TaskT> tasks,
       Function<TaskT, CloseableIterator<T>> openFunction,
