@@ -80,6 +80,7 @@ class AsyncTaskOpener<T, TaskT extends ScanTask> implements Closeable {
                     }
                   });
             }
+            Preconditions.checkArgument(false, "yaha tak to pohoch chuka hu          " + queue);
             executor.shutdown();
             if (executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS)) {
               queue.put(DONE_MARKER);
