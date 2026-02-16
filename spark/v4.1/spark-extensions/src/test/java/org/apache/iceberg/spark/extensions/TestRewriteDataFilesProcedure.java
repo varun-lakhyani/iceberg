@@ -1087,7 +1087,7 @@ public class TestRewriteDataFilesProcedure extends ExtensionsTestBase {
     ThreeColumnRecord record2 = new ThreeColumnRecord(2, "bar", null);
 
     int minFileSizeKB = 100;
-    int recordsPerFile = minFileSizeKB * 1024 / 50; // ~2000-2500 records per file
+    int recordsPerFile = 20000; // ~2000-2500 records per file
     int totalRecords = filesCount * recordsPerFile; // ~2-2.5 million records
 
     // Generate that many records
