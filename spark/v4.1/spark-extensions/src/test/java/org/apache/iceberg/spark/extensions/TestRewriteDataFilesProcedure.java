@@ -24,7 +24,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
-import org.apache.hadoop.shaded.org.apache.curator.shaded.com.google.common.base.Preconditions;
 import org.apache.iceberg.ParameterizedTestExtension;
 import org.apache.iceberg.SnapshotSummary;
 import org.apache.iceberg.TableProperties;
@@ -176,8 +175,8 @@ public class TestRewriteDataFilesProcedure extends ExtensionsTestBase {
     createTable();
     // create 10 files under non-partitioned table
     insertData(1000);
-    List<Object[]> files = sql("SELECT COUNT(*) FROM %s.files", tableName);
-    Preconditions.checkArgument(false, "fffffffffffffffffFiles created: " + files.get(0)[0]);
+    //    List<Object[]> files = sql("SELECT COUNT(*) FROM %s.files", tableName);
+    //    Preconditions.checkArgument(false, "fffffffffffffffffFiles created: " + files.get(0)[0]);
     List<Object[]> output =
         sql("CALL %s.system.rewrite_data_files(table => '%s')", catalogName, tableIdent);
 
@@ -1093,7 +1092,7 @@ public class TestRewriteDataFilesProcedure extends ExtensionsTestBase {
     // Generate that many records
 
     List<ThreeColumnRecord> records = Lists.newArrayList();
-    IntStream.range(0, filesCount / 2)
+    IntStream.range(0, totalRecords / 2)
         .forEach(
             i -> {
               records.add(record1);
