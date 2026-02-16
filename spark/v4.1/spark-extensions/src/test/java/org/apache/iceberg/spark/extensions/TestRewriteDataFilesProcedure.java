@@ -1093,7 +1093,7 @@ public class TestRewriteDataFilesProcedure extends ExtensionsTestBase {
     // Generate that many records
 
     List<ThreeColumnRecord> records = Lists.newArrayList();
-    IntStream.range(0, totalRecords / 2)
+    IntStream.range(0, filesCount / 2)
         .forEach(
             i -> {
               records.add(record1);
