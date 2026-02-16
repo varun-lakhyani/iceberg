@@ -143,7 +143,7 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
     return counter;
   }
 
-  public boolean nextAsync() throws IOException {
+  public boolean next() throws IOException {
     //    List<FileScanTask> allTasks = (List<FileScanTask>) taskGroup.tasks();
     //    StringBuilder details = new StringBuilder();
     //    details.append("Total tasks: ").append(allTasks.size()).append("\n");
@@ -199,7 +199,7 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
     }
   }
 
-  public boolean next() throws IOException {
+  public boolean nextSync() throws IOException {
 
     try {
       while (true) {
