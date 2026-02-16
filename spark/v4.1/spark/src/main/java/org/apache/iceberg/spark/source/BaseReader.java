@@ -153,6 +153,7 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
           try {
             this.currentIterator = asyncOpener.getNext();
             if (this.currentIterator == null) {
+              this.currentIterator = CloseableIterator.empty();
               return false;
             }
           } catch (InterruptedException e) {
