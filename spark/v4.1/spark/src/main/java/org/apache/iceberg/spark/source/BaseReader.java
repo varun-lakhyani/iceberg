@@ -102,7 +102,7 @@ abstract class BaseReader<T, TaskT extends ScanTask> implements Closeable {
         nameMappingString != null ? NameMappingParser.fromJson(nameMappingString) : null;
     this.counter = new DeleteCounter();
     this.cacheDeleteFilesOnExecutors = cacheDeleteFilesOnExecutors;
-    this.asyncEnabled = false;
+    this.asyncEnabled = true;
 
     if (asyncEnabled) {
       List<TaskT> allTasks = new ArrayList<>();
