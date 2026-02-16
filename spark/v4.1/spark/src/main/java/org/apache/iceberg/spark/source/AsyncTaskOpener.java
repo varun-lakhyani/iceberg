@@ -27,6 +27,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import org.apache.hadoop.shaded.org.apache.curator.shaded.com.google.common.base.Preconditions;
 import org.apache.iceberg.ScanTask;
 import org.apache.iceberg.io.CloseableIterator;
 import org.slf4j.Logger;
@@ -74,6 +75,7 @@ class AsyncTaskOpener<T, TaskT extends ScanTask> implements Closeable {
                       queue.put(iterator);
                     } catch (Exception e) {
                       LOG.error("Failed to open task asynchronously", e);
+                      Preconditions.checkArgument(false, "fail pointer 3 " + e);
                     }
                   });
             }
@@ -85,6 +87,7 @@ class AsyncTaskOpener<T, TaskT extends ScanTask> implements Closeable {
             LOG.info("All {} tasks opened asynchronously", tasks.size());
 
           } catch (InterruptedException e) {
+            Preconditions.checkArgument(false, "fail pointer 5 " + e);
             Thread.currentThread().interrupt();
             LOG.error("Interrupted while coordinating async opening", e);
           }
@@ -108,6 +111,7 @@ class AsyncTaskOpener<T, TaskT extends ScanTask> implements Closeable {
         try {
           iter.close();
         } catch (Exception e) {
+          Preconditions.checkArgument(false, "fail pointer 7 " + e);
           LOG.error("Error closing iterator", e);
         }
       }
