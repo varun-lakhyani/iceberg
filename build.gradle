@@ -1272,3 +1272,18 @@ project(':iceberg-bom') {
   // Needed to get the "faked" Scala artifacts into the bom
   javaPlatform { allowDependencies() }
 }
+
+project(':iceberg-core') {
+  dependencies {
+    jmhImplementation project(':iceberg-aws')
+    jmhImplementation platform(libs.awssdk.bom)
+    jmhImplementation 'software.amazon.awssdk:s3'
+    jmhImplementation 'software.amazon.awssdk:sts'
+    jmhImplementation 'software.amazon.awssdk:auth'
+    jmhImplementation 'software.amazon.awssdk:url-connection-client'
+    jmhImplementation 'software.amazon.awssdk:apache-client'
+    jmhImplementation 'software.amazon.awssdk:kms'
+    jmhImplementation 'software.amazon.awssdk:glue'
+    jmhImplementation 'software.amazon.awssdk:dynamodb'
+  }
+}
