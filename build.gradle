@@ -1272,4 +1272,3 @@ project(':iceberg-bom') {
   // Needed to get the "faked" Scala artifacts into the bom
   javaPlatform { allowDependencies() }
 }
-
