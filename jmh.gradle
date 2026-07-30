@@ -86,3 +86,10 @@ configure(jmhProjects) {
 
   tasks.jmh.finalizedBy tasks.jmhReport
 }
+
+project(':iceberg-core') {
+  dependencies {
+    jmhImplementation project(':iceberg-aws')
+    jmhRuntimeOnly project(':iceberg-aws-bundle')
+  }
+}

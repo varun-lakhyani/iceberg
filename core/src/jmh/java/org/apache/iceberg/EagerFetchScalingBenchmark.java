@@ -137,8 +137,7 @@ public class EagerFetchScalingBenchmark {
       local.initialize(props);
       this.fileIO = local;
       try {
-        this.baseDir =
-            java.nio.file.Files.createTempDirectory("eager-scaling-").toUri().toString();
+        this.baseDir = java.nio.file.Files.createTempDirectory("eager-scaling-").toUri().toString();
       } catch (IOException e) {
         throw new UncheckedIOException(e);
       }
@@ -146,7 +145,10 @@ public class EagerFetchScalingBenchmark {
 
     String manifestPath =
         String.format(
-            Locale.ROOT, "%s/%s", baseDir, fileFormat.addExtension("manifest-" + UUID.randomUUID()));
+            Locale.ROOT,
+            "%s/%s",
+            baseDir,
+            fileFormat.addExtension("manifest-" + UUID.randomUUID()));
     OutputFile out = fileIO.newOutputFile(manifestPath);
     ManifestWriter<DataFile> writer = ManifestFiles.write(formatVersion, spec, out, 1L);
     try (ManifestWriter<DataFile> w = writer) {

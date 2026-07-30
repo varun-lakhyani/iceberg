@@ -103,7 +103,9 @@ public class ManifestBenchmark {
   @Param({"false", "true"})
   private String zEagerFetch;
 
+  // change S3_BASE and S3_REGION before running
   private static final String S3_BASE = "s3://iceberg-spark-readers-poc/manifest-v4";
+  private static final String S3_REGION = "ap-south-1";
 
   private int formatVersion;
   private FileFormat fileFormat;
@@ -134,7 +136,7 @@ public class ManifestBenchmark {
     s3FileIO.initialize(
         ImmutableMap.of(
             "client.region",
-            "ap-south-1",
+            S3_REGION,
             CatalogProperties.IO_MANIFEST_EAGER_FETCH_ENABLED,
             zEagerFetch));
     this.fileIO = s3FileIO;
