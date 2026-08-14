@@ -23,8 +23,11 @@ import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import org.apache.iceberg.aws.s3.S3FileIO;
 import org.apache.iceberg.io.CloseableIterator;
+import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -52,7 +55,8 @@ import org.openjdk.jmh.infra.Blackhole;
  * "4_PARQUET"}) so that only meaningful pairings are benchmarked.
  *
  * <p>Entry counts are calibrated per column count via {@link #ENTRY_BASE}. Set to 300_000 for ~8 MB
- * manifests (matching the default {@code commit.manifest.target-size-bytes}) or 15_000 for ~400 KB.
+ * manifests (matching the default {@code commit.manifest.target-size-bytes}), 37_500 for ~1 MB, or
+ * 15_000 for ~400 KB.
  *
  * <p>To run this benchmark:
  *
@@ -85,7 +89,7 @@ import org.openjdk.jmh.infra.Blackhole;
 @Timeout(time = 10, timeUnit = TimeUnit.MINUTES)
 public class ManifestBenchmark {
 
-  static final int ENTRY_BASE = 300_000;
+  static final int ENTRY_BASE = 33_750;
 
   @Param({"1_AVRO", "2_AVRO", "3_AVRO", "4_AVRO", "4_PARQUET"})
   private String versionFormat;
@@ -96,11 +100,19 @@ public class ManifestBenchmark {
   @Param({"10", "50", "100"})
   private int numCols;
 
+  @Param({"false", "true"})
+  private String zEagerFetch;
+
+  // change S3_BASE and S3_REGION before running
+  private static final String S3_BASE = "s3://iceberg-spark-readers-poc/manifest-v4";
+  private static final String S3_REGION = "ap-south-1";
+
   private int formatVersion;
   private FileFormat fileFormat;
   private PartitionSpec spec;
   private Map<Integer, PartitionSpec> specsById;
   private List<DataFile> dataFiles;
+  private FileIO fileIO;
 
   private String writeBaseDir;
   private OutputFile writeOutputFile;
@@ -120,15 +132,22 @@ public class ManifestBenchmark {
     this.specsById = ImmutableMap.of(spec.specId(), spec);
     int numEntries = ManifestBenchmarkUtil.entriesForColumnCount(ENTRY_BASE, numCols);
     this.dataFiles = ManifestBenchmarkUtil.generateDataFiles(spec, numEntries, numCols);
+    S3FileIO s3FileIO = new S3FileIO();
+    s3FileIO.initialize(
+        ImmutableMap.of(
+            "client.region",
+            S3_REGION,
+            CatalogProperties.IO_MANIFEST_EAGER_FETCH_ENABLED,
+            zEagerFetch));
+    this.fileIO = s3FileIO;
     setupReadManifest();
   }
 
   @Setup(Level.Invocation)
   public void setupWriteInvocation() throws IOException {
-    this.writeBaseDir =
-        java.nio.file.Files.createTempDirectory("bench-write-").toAbsolutePath().toString();
+    this.writeBaseDir = S3_BASE + "/bench-write/" + cellPath() + "/" + UUID.randomUUID();
     this.writeOutputFile =
-        Files.localOutput(
+        fileIO.newOutputFile(
             String.format(Locale.ROOT, "%s/%s", writeBaseDir, fileFormat.addExtension("manifest")));
 
     for (DataFile file : dataFiles) {
@@ -140,7 +159,6 @@ public class ManifestBenchmark {
 
   @TearDown(Level.Trial)
   public void tearDownTrial() {
-    ManifestBenchmarkUtil.cleanDir(readBaseDir);
     readBaseDir = null;
     readManifest = null;
     dataFiles = null;
@@ -148,7 +166,6 @@ public class ManifestBenchmark {
 
   @TearDown(Level.Invocation)
   public void tearDownInvocation() {
-    ManifestBenchmarkUtil.cleanDir(writeBaseDir);
     writeBaseDir = null;
     writeOutputFile = null;
   }
@@ -170,7 +187,6 @@ public class ManifestBenchmark {
   @Benchmark
   @Threads(1)
   public void readManifest(Blackhole blackhole) throws IOException {
-    TestTables.LocalFileIO fileIO = new TestTables.LocalFileIO();
     try (CloseableIterator<DataFile> it =
         ManifestFiles.read(readManifest, fileIO, specsById).iterator()) {
       while (it.hasNext()) {
@@ -179,16 +195,21 @@ public class ManifestBenchmark {
     }
   }
 
+  private String cellPath() {
+    return String.format(
+        Locale.ROOT,
+        "vf-%s/part-%s/eager-%s/cols-%d",
+        versionFormat,
+        partitioned,
+        zEagerFetch,
+        numCols);
+  }
+
   private void setupReadManifest() {
-    try {
-      this.readBaseDir =
-          java.nio.file.Files.createTempDirectory("bench-read-").toAbsolutePath().toString();
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
+    this.readBaseDir = S3_BASE + "/bench-read/" + cellPath() + "/" + UUID.randomUUID();
 
     OutputFile manifestFile =
-        Files.localOutput(
+        fileIO.newOutputFile(
             String.format(Locale.ROOT, "%s/%s", readBaseDir, fileFormat.addExtension("manifest")));
 
     ManifestWriter<DataFile> writer = ManifestFiles.write(formatVersion, spec, manifestFile, 1L);
